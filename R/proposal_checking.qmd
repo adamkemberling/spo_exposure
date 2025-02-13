@@ -47,7 +47,7 @@ nsf_keywords <- c(
   "cultural relevance",
   "disability",
   "diverse backgrounds",
-  "diversity",
+  " diversity",
   "diversified",
   "ethinicity",
   "excluded",
@@ -78,7 +78,7 @@ status_keywords <- c(
 "HATE SPEECH", "HISTORICALLY", "IMPLICIT BIAS", "IMPLICIT BIASES", "INJUSTICE", "INJUSTICES", "INSTITUTIONAL", "INSTITUTIONALIZE", "INSTITUTIONALIZED", "INSTITUTIONALLY", "INTERGENERATIONAL TRAUMA", "INTERSECTIONAL", "INTERSECTIONALITY", "MARGINALIZATION", "MARGINALIZE", "MARGINALIZED", "MICRO AGGRESSION", "MICRO AGGRESSIONS", "MICRO AGGRESSIVE", "MICRO AGGRESSIVENESS", "MICROAGGRESSION", "MICROAGGRESSIONS", "MICROAGGRESSIVE", "MICROAGGRESSIVENESS", "MINORITIES", "MINORITY", "OPPRESSED", "OPPRESSIVE",
 "OPPRESSIVENESS", "OPPRESSION", "POLARIZATION", "POLARIZE", "POLITICIZATION", "POLITICIZE", "POLITICAL", "PREJUDICE", "PREJUDICES", "PRIVILEGE", "PRIVILEGED", "PRIVILEGES", "REPARATION", "REPARATIONS", "SEGREGATED", "SEGREGATION", "SOCIO ECONOMIC", "SOCIOECONOMIC", "STATUS", "STATUSES", "STEREOTYPE", "STEREOTYPES", "STEREOTYPICAL", "STEREOTYPING", "SYSTEM OF OPPRESSION", "SYSTEMATIC OPPRESSION", "SYSTEMATICALLY OPPRESSED", "SYSTEMIC",
 "SYSTEMIC OPPRESSION", "SYSTEMICAL", "SYSTEMICALLY", "SYSTEMICALLY OPPRESSED", "SYSTEMS OF OPPRESSION", "SYSTEMS OF POWER", "TRAUMA", "TRAUMATIC", "UNDER APPRECIATED", "UNDER APPRECIATION", "UNDER PRIVILEGE", "UNDER PRIVILEGED", "UNDER REPRESENTATION", "UNDER REPRESENTED", "UNDER SERVED", "UNDER SERVING", "UNDER VALUED", "UNDER VALUING", "UNDERAPPRECIATED", "UNDERAPPRECIATION", "UNDERPRIVILEGE", "UNDERPRIVILEGED",
-"UNDERREPRESENTATION", "UNDERREPRESENTED", "UNDERSERVED", "UNDERSERVING", "UNDERVALUED", "UNDERVALUING", "UNJUST", "VICTIM", "VICTIMHOOD", "VICTIMIZED", "VICTIMS", "VOICES ARE ACKNOWLEDGED", "VOICES HEARD", "VOICES MATTER", "UNEQUAL OPPORTUNITIES", "UNEQUAL OPPORTUNITY", "SAFE SPACE", "SAFE SPACES", "SENSE OF BELONGING", "SENSE OF BELONGINGNESS", "WELCOMING ENVIRONMENT", "BARRIER", "BARRIERS", "DISABILITIES", "DISABILITY", "ALLY", "ALLYSHIP")
+"UNDERREPRESENTATION", "UNDERREPRESENTED", "UNDERSERVED", "UNDERSERVING", "UNDERVALUED", "UNDERVALUING", "UNJUST", "VICTIM", "VICTIMHOOD", "VICTIMIZED", "VICTIMS", "VOICES ARE ACKNOWLEDGED", "VOICES HEARD", "VOICES MATTER", "UNEQUAL OPPORTUNITIES", "UNEQUAL OPPORTUNITY", "SAFE SPACE", "SAFE SPACES", "SENSE OF BELONGING", "SENSE OF BELONGINGNESS", "WELCOMING ENVIRONMENT", "BARRIER", "BARRIERS", "DISABILITIES", "DISABILITY", " ALLY", "ALLYSHIP")
 ```
 
 ```{r}
@@ -103,6 +103,21 @@ SOLIDARITY", "RACIAL STEREOTYPES", "RACIAL VIOLENCE", "RACIALLY", "RACIALLY AND 
 env_justice_keywords <- c("CLIMATE ACTION", "CLIMATE CONSCIOUS", "CLIMATE CONSCIOUSNESS", "CLIMATE EQUALITY", "CLIMATE EQUITY","CLIMATE JUSTICE", "CLIMATE RESEARCH", "ECO CULTURAL", "ECOCULTURAL", "ENVIRONMENT CONSCIOUS","ENVIRONMENT CONSCIOUSNESS", "ENVIRONMENTAL CONSCIOUS", "ENVIRONMENTAL CONSCIOUSNESS", "ENVIRONMENTAL EQUALITY", "ENVIRONMENTAL EQUITY", "ENVIRONMENTAL GOVERNANCE", "ENVIRONMENTAL JUSTICE", "ENVIRONMENTAL SOCIAL", "ENVIRONMENTALGOVERNANCE", "ENVIRONMENTALLY CONSCIOUS", "ENVIRONMENTALSOCIAL", "ESG", "ESG EFFORT", "ESG EFFORTS", "ESG INITIATIVE", "ESG INITIATIVES", "GREEN NEW DEAL", "NET ZERO", "NETZERO", "SOCIAL ENVIRONMENTAL", "SOCIALENVIRONMENTAL", "CLIMATE INJUSTICE", "CLIMATE JUSTICES", "CLIMATE INJUSTICES", "CLIMATE CHANGE", "GREEN INFRASTRUCTURE", "GREEN SOCIETY", "CLEAN ENERGY")
 ```
 
+```{r}
+# Prepare list to go through the categories:
+keyword_list <- list(
+  "NSF" = nsf_keywords,
+  "Social Justice" = social_justice_keywords,
+  "Environmental Justice" = env_justice_keywords,
+  "Gender" = gender_keywords,
+  "Race" = race_keywords,
+  "Status" = status_keywords
+)
+
+all_bad_words <- map_dfr(keyword_list, ~data.frame("keyword" = tolower(.x)), .id = "DEIJ Categotry")
+write_csv(all_bad_words, here::here("local_data/deij_keywords.csv"))
+```
+
 ## Load Proposals
 
 We have two folders of proposals, those that have been awarded and those that are pending.
@@ -114,14 +129,14 @@ pending <- cs_path("root", "Pending Federal Proposals")
 
 # awarded proposals
 awarded_proposals <- setNames(
-  list.files(awarded, full.names = T) %>% as.list(),
-  list.files(awarded))
+  list.files(awarded, full.names = T, pattern = ".pdf|.docx") %>% as.list(),
+  list.files(awarded, pattern = ".pdf|.docx"))
 
 
 # Pending proposals
 pending_proposals <- setNames(
-  list.files(pending, full.names = T) %>% as.list(),
-  list.files(pending))
+  list.files(pending, full.names = T, pattern = ".pdf|.docx") %>% as.list(),
+  list.files(pending, pattern = ".pdf|.docx"))
 
 
 ```
@@ -307,15 +322,7 @@ write_csv(
 In the
 
 ```{r}
-# Prepare list to go through the categories:
-keyword_list <- list(
-  "NSF" = nsf_keywords,
-  "Social Justice" = social_justice_keywords,
-  "Environmental Justice" = env_justice_keywords,
-  "Gender" = gender_keywords,
-  "Race" = race_keywords,
-  "Status" = status_keywords
-)
+
 
 # Run Them All
 categorical_matches <- map_dfr(
@@ -347,10 +354,10 @@ categorical_matches <- map_dfr(
 ```
 
 ```{r}
-#| fig.height = 10
+#| fig.height = 12
 
 categorical_matches %>% 
-    group_by(`DEIJ Category`, keyword) %>% 
+    group_by(`DEIJ Category`, status, keyword) %>% 
     summarise(total_counts = sum(count),
               .groups = "drop") %>%
     filter(total_counts > 0) %>% 
@@ -359,11 +366,90 @@ categorical_matches %>%
       keyword = fct_reorder(keyword, total_counts, .fun = median)) %>% 
     ggplot(aes(y = keyword, x = total_counts)) +
     geom_col() +
-    #facet_wrap(~`DEIJ Category`, scales = "free") +
-    facet_grid(`DEIJ Category`~., space = "free", scales = "free") +
+    facet_grid(`DEIJ Category`~status, space = "free", scales = "free") +
   theme(axis.text = element_text(size = 8),
         strip.text.y = element_text(angle = 0)) +
     labs(x = "Times Flagged",
          title = "Keyword Flags in Awarded and Pending Proposals")
 
+```
+
+```{r}
+#| fig.height = 12
+
+
+proposals_at_risk <- categorical_matches %>% 
+    mutate(flagged = if_else(count > 0, T, F)) %>% 
+    group_by(`DEIJ Category`, status, keyword) %>% 
+    summarise(
+      total_counts = sum(flagged),
+      n_proposals = n_distinct(proposal_name),
+      .groups = "drop") %>%
+    filter(total_counts > 0) %>% 
+    mutate(
+      percent_of_proposals = (total_counts/n_proposals),
+      keyword = fct_drop(keyword),
+      keyword = tolower(keyword),
+      keyword = fct_reorder(keyword, total_counts, .fun = median)) 
+
+# # library(patchwork)
+# proposals_at_risk %>%
+#     ggplot(aes(y = keyword, x = total_counts)) +
+#     geom_col() +
+#     facet_grid(`DEIJ Category`~status, space = "free", scales = "free") +
+#   theme(axis.text = element_text(size = 8),
+#         strip.text.y = element_text(angle = 0)) +
+#     labs(x = "# of Proposals Flagged",
+#          title = "Number of Proposals Flagged for DEI Keywords")
+
+proposals_at_risk %>% 
+    ggplot(aes(y = keyword, x = percent_of_proposals)) +
+    geom_col() +
+    scale_x_continuous(labels = scales::label_percent(), limits = c(0,1)) +
+    facet_grid(`DEIJ Category`~status, space = "free", scales = "free") +
+  theme(axis.text = element_text(size = 8),
+        strip.text.y = element_text(angle = 0)) +
+    labs(x = "% of Proposals Flagged",
+         title = "Percent of Proposals Flagged for DEI Keywords")
+```
+
+```{r}
+#| eval: true
+
+# Don't need misses
+positive_matches <- categorical_matches %>% 
+  mutate(keyword = tolower(keyword)) %>% 
+  select(proposal_name, status, `DEIJ Category`, keyword, times_found = count) %>% 
+  filter(times_found > 0) %>% 
+  arrange(proposal_name, status, desc(times_found))
+
+# Save those to SPO Folder
+
+write_csv(
+  filter(positive_matches, status == "awarded"),
+  str_c(awarded, "2025_AwardedProposal_DEIJ_keyword_flags.csv")
+)
+write_csv(
+  filter(positive_matches, status == "pending"),
+  str_c(pending, "2025_PendingProposal_DEIJ_keyword_flags.csv")
+)
+
+
+```
+
+```{r}
+#| label: safe proposals
+
+# Are any safe? Two!
+unflagged_proposals <- categorical_matches %>% 
+  group_by(proposal_name, status) %>% 
+  summarise(
+    flag_total = sum(count),
+    .groups = "drop") %>% 
+  filter(flag_total ==  0) %>% 
+  distinct(proposal_name, status, flag_total) %>% 
+  arrange(status, proposal_name)
+
+
+gt::gt(unflagged_proposals)
 ```
